@@ -1,0 +1,1 @@
+C:\Users\Jenfi\AppData\Local\Programs\Python\Python310\python.exe D:\programming\qt_learning_2\main.py %*
