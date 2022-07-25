@@ -5,9 +5,14 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtCore import *
 import PyQt6.QtGui
 import sys
+import os.path
 from time import sleep
 
-
+heroes_ability = {
+    'ABADDON': ['time', 60, 50, 40]
+}
+for i in heroes_ability:
+    print(i)
 class Hero(QThread):
     def __init__(self, hero, skill_lvl):
         super(QThread, self).__init__(None)
@@ -20,33 +25,67 @@ class Hero(QThread):
         self.widg.setLayout(self.layout)
         self.path = 'icons/' + self.hero + '.png'
         self.ico.setPixmap(PyQt6.QtGui.QPixmap(self.path))
+        # ability
+        self.ability_timer = QLabel()
 
         self.test_label = QLabel()
         self.test_label.setPixmap(PyQt6.QtGui.QPixmap('icons/' + 'rosh' + '.png'))
-
+        # buttons and etc.
         self.submit_button = QPushButton('submit\nhero')
         self.submit_button.setStyleSheet("background-color: #e0a96d")
         self.start_ability_button = QPushButton('V')
         self.start_ability_button.setStyleSheet("background-color: #e0a96d")
         self.choose_box = QComboBox()
         self.choose_box.addItems(['rosh', 'enigma'])
+        for hero in heroes_ability:
+            self.choose_box.addItem(hero)
         self.choose_box.setStyleSheet("background-color: #e0a96d")
 
         self.stop_ability_button = QPushButton('X')
         self.stop_ability_button.setStyleSheet("background-color: #e0a96d")
         # layout adds
         self.layout.addWidget(self.ico)
-        #self.layout.addWidget(self.test_label)
+        # self.layout.addWidget(self.test_label)
         self.layout.addWidget(self.start_ability_button)
         self.layout.addWidget(self.stop_ability_button)
         self.layout.addWidget(self.choose_box)
         self.layout.addWidget(self.submit_button)
 
+        self.is_running = False
         self.can_start = True
 
     def run(self):
-        self.path = 'icons/' + self.choose_box.currentText() + '.png'
-        self.ico.setPixmap(PyQt6.QtGui.QPixmap(self.path))
+        self.hero = self.choose_box.currentText()
+        self.path = 'icons/' + self.hero + '.png'
+        print(os.path.exists(self.path))
+        if os.path.exists(self.path):
+            self.ico.setPixmap(PyQt6.QtGui.QPixmap(self.path))
+        else:
+            self.ico.setPixmap(PyQt6.QtGui.QPixmap('icons/no_ico.png'))
+
+
+    def rosh_start(self):
+        self.time_left_int = 60 * 11
+        if self.can_start:
+            self.can_start = False
+            self.rosh_timer = QtCore.QTimer(self)
+            self.rosh_timer.timeout.connect(self.rosh_timeout)
+            self.rosh_timer.start(1000)
+            self.rosh_timer_text.setText(f'Rosh time: {self.time_left_int // 60}:{self.time_left_int % 60}')
+
+    def rosh_timeout(self):
+        self.time_left_int -= 1
+        self.rosh_timer_text.setText(f'Rosh time: {self.time_left_int // 60}:{self.time_left_int % 60}')
+        if self.time_left_int <= 0:
+            self.rosh_stop()
+        print(self.time_left_int)
+
+    def rosh_stop(self):
+        if self.can_start == False:
+            self.rosh_timer.stop()
+            self.can_start = True
+            self.rosh_timer_text.setText('Rosh is alive')
+            print('stopped')
 
 
 class MainWindow(QMainWindow):
