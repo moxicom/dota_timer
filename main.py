@@ -8,18 +8,13 @@ import sys
 import os.path
 from win10toast import ToastNotifier
 from time import sleep
+import json
 
-items_dict = {
-    'SPELL_PRISM': 13,
-    'WTF_ASPECT1': 11,
-    'WTF_ASPECT2': 10
-}
+with open('heroes_items.json') as file:
+    data_dict = json.load(file)
 
-heroes_ability = {
-    'ABADDON': ['time', 60, 50, 40],
-    'ROSH': ['time', 5, 29, 28],
-    'ENIGMA': ['time', 20, 19, 18]
-}
+items_dict = data_dict['items']
+heroes_ability = data_dict['heroes']
 
 
 class Choose_Item_Window(QMainWindow):
@@ -27,6 +22,7 @@ class Choose_Item_Window(QMainWindow):
         super(Choose_Item_Window, self).__init__()
         # windows settings
         self.setFixedSize(320, 160)
+        self.setWindowTitle('Dota timer | items')
         self.layout = QVBoxLayout()
         self.widget = QWidget()
         self.widget.setLayout(self.layout)
@@ -61,6 +57,9 @@ class Hero(QThread):
         self.widg = QWidget()
         self.layout = QVBoxLayout()
         self.widg.setLayout(self.layout)
+        self.change_ability_lvl_widg = QWidget()
+        self.change_ability_lvl_layout = QHBoxLayout()
+        self.change_ability_lvl_widg.setLayout(self.change_ability_lvl_layout)
         self.path = 'icons/' + self.hero + '.png'
         self.ico.setPixmap(PyQt6.QtGui.QPixmap(self.path))
         # items
@@ -72,13 +71,13 @@ class Hero(QThread):
         self.items_added_list = []
         # buttons 4 items and etc
         self.add_item_button = QPushButton('Add item')
-        self.add_item_button.setStyleSheet('background-color: #e0a96d')
+        self.add_item_button.setStyleSheet('background-color: #e0a96d; border-radius: 2px')
         self.add_item_button.clicked.connect(self.choose_item_window.show)
         self.delete_item_button = QPushButton('Delete this\nitem')
-        self.delete_item_button.setStyleSheet('background-color: #e0a96d')
+        self.delete_item_button.setStyleSheet('background-color: #e0a96d; border-radius: 2px')
         self.delete_item_button.clicked.connect(self.del_item)
         self.item_box = QComboBox()
-        self.item_box.setStyleSheet('background-color: #e0a96d')
+        self.item_box.setStyleSheet('background-color: #e0a96d; border-radius: 1px')
         self.submit_item_button = self.choose_item_window.submit_button
         self.submit_item_button.clicked.connect(self.add_item)
         self.close_item_window_button = self.choose_item_window.close_button
@@ -86,21 +85,27 @@ class Hero(QThread):
         # ability
         self.ability_timer_text = QLabel()
         self.ability_timer_text.setStyleSheet('color: #e0a96d')
-        self.ability_timer_text.setText('Ability can be used')
+        # self.ability_timer_text.setText('Ability can be used')
+        self.update_ability_cooldown()
         # buttons 4 abilities and etc.
+        self.up_ability_lvl = QPushButton()
+        self.up_ability_lvl.setText('Change lvl')
+        self.up_ability_lvl.clicked.connect(self.up_ability_lvl_func)
+        self.up_ability_lvl.setStyleSheet('background-color: #e0a96d; border-radius: 2px; margin:10px; padding: 2px')
         self.submit_button = QPushButton('submit\nhero')
-        self.submit_button.setStyleSheet('background-color: #e0a96d')
+        self.submit_button.setStyleSheet('background-color: #e0a96d; border-radius: 2px')
         self.submit_button.clicked.connect(self.change_hero)
-        self.start_ability_button = QPushButton('V ability')
-        self.start_ability_button.setStyleSheet('background-color: #e0a96d')
-        self.stop_ability_button = QPushButton('X ability')
-        self.stop_ability_button.setStyleSheet('background-color: #e0a96d')
+        self.start_ability_button = QPushButton('Start ability')
+        self.start_ability_button.setStyleSheet('background-color: #e0a96d; border-radius: 2px')
+        self.stop_ability_button = QPushButton('Stop ability')
+        self.stop_ability_button.setStyleSheet('background-color: #e0a96d; border-radius: 2px')
         self.stop_ability_button.clicked.connect(self.stop_ability)
         self.choose_box = QComboBox()
-        self.choose_box.setStyleSheet('background-color: #e0a96d')
+        self.choose_box.setStyleSheet('background-color: #e0a96d; border-radius: 1px')
         for hero in heroes_ability:  # add all heroes to choose_box from heroes_ability dictionary
             self.choose_box.addItem(hero)
         # layout adds
+        self.layout.addWidget(self.up_ability_lvl)
         self.layout.addWidget(self.ico)
         self.layout.addWidget(self.ability_timer_text)
         self.layout.addWidget(self.start_ability_button)
@@ -116,6 +121,13 @@ class Hero(QThread):
         self.ability_cooldown = 0
         self.is_running = False
 
+    def up_ability_lvl_func(self):
+        if self.ability_lvl != 3:
+            self.ability_lvl = abs(self.ability_lvl + 1) % 4
+        else:
+            self.ability_lvl = 1
+        self.update_ability_cooldown()
+
     def add_item(self):
         self.stop_ability()
         item = self.choose_item_window.all_items_box.currentText()
@@ -130,17 +142,23 @@ class Hero(QThread):
     def del_item(self):
         self.stop_ability()
         item = self.item_box.currentText()
-        self.item_box.removeItem(self.item_box.currentIndex())
-        self.items_added_list.pop(self.items_added_list.index(item))
-        self.update_ability_cooldown()
+        try:
+            self.item_box.removeItem(self.item_box.currentIndex())
+            self.items_added_list.pop(self.items_added_list.index(item))
+            self.update_ability_cooldown()
+        except Exception:
+            pass
 
     def update_ability_cooldown(self):
         all_items = 1
         for el in self.items_added_list:
             all_items *= 1 - items_dict[el] * 0.01
         print(all_items)
-        self.ability_cooldown = heroes_ability[self.hero][self.ability_lvl] * all_items
-        self.ability_timer_text.setText(f'Ability can be used\n{self.ability_cooldown} sec.')
+        try:
+            self.ability_cooldown = heroes_ability[self.hero][self.ability_lvl] * all_items
+            self.ability_timer_text.setText(f'Lvl {self.ability_lvl}\nAbility can be used\n{self.ability_cooldown} sec.')
+        except Exception:
+            pass
 
     def stop_ability(self):
         self.is_running = False
@@ -152,7 +170,8 @@ class Hero(QThread):
         self.update_ability_cooldown()
         sleep(1)
         while self.ability_cooldown > 0:
-            self.ability_timer_text.setText(f'Ability cooldown:\n' + str(self.ability_cooldown) + ' sec.')
+            self.ability_timer_text.setText(
+                f'Lvl {self.ability_lvl}\nAbility cooldown:\n' + str(self.ability_cooldown) + ' sec.')
             self.ability_cooldown -= 1
             sleep(1)
         self.update_ability_cooldown()
@@ -169,53 +188,30 @@ class Hero(QThread):
         self.path = 'icons/' + self.hero.lower() + '.png'
         print(f'new path: {self.path}')
         self.update_ability_cooldown()
-        print('cooldown updated')
-        print(os.path.exists(self.path))
         if os.path.exists(self.path):
             self.ico.setPixmap(PyQt6.QtGui.QPixmap(self.path))
         else:
             self.ico.setPixmap(PyQt6.QtGui.QPixmap('icons/no_ico.png'))
 
-    # # через QTimer. как появится интернет, надо погуглить, как его починить с потоками
-    # def run(self):  # was rosh_start
-    #     print('должно начаться')
-    #     self.time_left_int = heroes_ability[self.hero][self.ability_lvl]
-    #     if self.can_start:
-    #         self.can_start = False
-    #         self.ability_timer = QtCore.QTimer(self) # was rosh_timer
-    #         self.ability_timer.timeout.connect(self.ability_timeout)
-    #         self.ability_timer.start(1000)
-    #         self.ability_timer_text.setText(f'Time remaining: {self.time_left_int // 60}:{self.time_left_int % 60}')
-    #
-    # def ability_timeout(self):
-    #     self.time_left_int -= 1
-    #     self.ability_timer_text.setText(f'Time remaining: {self.time_left_int // 60}:{self.time_left_int % 60}')
-    #     if self.time_left_int <= 0:
-    #         self.ability_stop()
-    #     print(self.time_left_int)
-    #
-    # def ability_stop(self):
-    #     if self.can_start == False:
-    #         self.ability_timer.stop()
-    #         self.can_start = True
-    #         self.ability_timer_text.setText('Rosh is alive')
-    #         print('stopped')
-
 
 class Main_Window(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Dota2timer')
-        # self.setFixedSize(800, 700)
-        self.setMaximumSize(500, 10000)
-        self.setMinimumSize(0, 550)
+        self.setWindowTitle('Dota timer')
+        self.setFixedSize(630, 600)
+        # self.setMaximumSize(500, 10000)
+        # self.setMinimumSize(0, 550)
 
         self.rosh_ico = QLabel()
         # Layouts
         self.layout_rosh = QHBoxLayout()
         self.layout_heroes = QHBoxLayout()
 
+        PyQt6.QtGui.QFontDatabase.addApplicationFont('font.otf')
+        font = PyQt6.QtGui.QFont('font.otf')
+
         self.rosh_timer_text = QLabel('qewwe')
+        self.rosh_timer_text.setFont(font)
         self.rosh_button_start = QPushButton('Rosh killed')
         self.rosh_button_cans = QPushButton('X')
         self.timer = QTimer()
@@ -241,8 +237,8 @@ class Main_Window(QMainWindow):
         self.hero_4.start_ability_button.clicked.connect(self.hero_4.start)
         self.hero_5.start_ability_button.clicked.connect(self.hero_5.start)
         # roshan
-        self.rosh_button_start.setStyleSheet('background-color: #e0a96d')
-        self.rosh_button_cans.setStyleSheet('background-color: #e0a96d')
+        self.rosh_button_start.setStyleSheet('background-color: #e0a96d; border-radius: 2px; padding: 1px')
+        self.rosh_button_cans.setStyleSheet('background-color: #e0a96d; border-radius: 2px; padding: 1px')
         self.rosh_timer_text.setStyleSheet('color: #e0a96d')
         self.rosh_ico.setPixmap(self.smaller_pixmap)
 
@@ -296,9 +292,7 @@ app = QApplication(sys.argv)  # Передаём sys.argv, чтобы разре
 window = Main_Window()
 window.setStyleSheet('background-color: #201e20')
 window.show()
-# Hex code: #ddc3a5, #201e20, #e0a96d
+# colors Hex code: #ddc3a5, #201e20, #e0a96d
 
-app.exec()  # Запускаем цикл событий.
+app.exec()
 print('end')
-# Приложение не доберётся сюда, пока вы не выйдете и цикл
-# событий не остановится.

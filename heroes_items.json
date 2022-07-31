@@ -1,0 +1,12 @@
+{
+  "items": {
+    "SPELL_PRISM": 13,
+    "WTF_ASPECT1": 11,
+    "WTF_ASPECT2": 10
+  },
+  "heroes": {
+    "ROSH": ["time", 666, 666, 666],
+    "ABADDON": ["time", 60, 50, 40],
+    "ENIGMA": ["time", 20, 19, 18]
+  }
+}
